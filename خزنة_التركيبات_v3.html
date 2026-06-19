@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خزنة التركيبات</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f4f8; min-height: 100vh; direction: rtl; }
+
+  /* LOGIN SCREEN */
+  #login-screen {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #1a3a5c 0%, #2563a8 100%);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .login-box {
+    background: #fff; border-radius: 20px; padding: 36px 28px; width: 320px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;
+  }
+  .login-box h2 { color: #1a3a5c; font-size: 22px; margin-bottom: 6px; }
+  .login-box p { color: #6b7280; font-size: 13px; margin-bottom: 24px; }
+  .login-box input { margin-bottom: 12px; text-align: center; }
+  .login-error { color: #dc2626; font-size: 12px; margin-top: 8px; display: none; }
+  .login-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .login-tab { flex: 1; padding: 8px; border: 2px solid #e5e7eb; border-radius: 10px; background: none; cursor: pointer; font-size: 13px; font-weight: 600; color: #6b7280; font-family: inherit; }
+  .login-tab.active { border-color: #2563a8; color: #2563a8; background: #eff6ff; }
+  .login-loading { color: #2563a8; font-size: 13px; margin-top: 8px; display: none; }
+
+  /* DRAFT PANEL */
+  #draft-panel {
+    position: fixed; top: 0; left: 0; height: 100%; width: 300px;
+    background: #fffbeb; border-right: 3px solid #f59e0b;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15); z-index: 400;
+    transform: translateX(-100%); transition: transform 0.3s ease;
+    display: flex; flex-direction: column;
+  }
+  #draft-panel.open { transform: translateX(0); }
+  .draft-header { background: #f59e0b; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+  .draft-header h3 { color: #fff; font-size: 15px; }
+  .draft-close { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
+  .draft-body { flex: 1; overflow-y: auto; padding: 14px; }
+  .draft-add-row { padding: 12px; border-top: 1px solid #fde68a; display: flex; gap: 8px; }
+  .draft-add-row input { font-size: 13px; border-color: #fbbf24; }
+  .draft-item {
+    background: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+    border-right: 4px solid #f59e0b; display: flex; align-items: flex-start; gap: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .draft-item .dot { color: #f59e0b; font-size: 18px; flex-shrink: 0; }
+  .draft-item .note-text { flex: 1; font-size: 13px; color: #374151; line-height: 1.5; }
+  .draft-item .note-del { background: none; border: none; color: #dc2626; cursor: pointer; font-size: 16px; }
+  .draft-empty { text-align: center; color: #d97706; font-size: 13px; padding: 20px; }
+
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2563a8 100%); padding: 12px 16px; color: #fff; }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .header h1 { font-size: 18px; font-weight: 700; text-align: center; flex: 1; }
+  .header-icons { display: flex; gap: 8px; align-items: center; }
+  .icon-btn { background: rgba(255,255,255,0.2); border: none; border-radius: 10px; color: #fff; cursor: pointer; padding: 7px 10px; font-size: 16px; position: relative; }
+  .draft-badge {
+    position: absolute; top: -4px; right: -4px; background: #dc2626; color: #fff;
+    border-radius: 50%; width: 16px; height: 16px; font-size: 10px;
+    display: none; align-items: center; justify-content: center; font-weight: 700;
+  }
+  .nav { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .nav button { padding: 7px 14px; border-radius: 20px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.15); color: #fff; transition: all 0.2s; font-family: inherit; }
+  .nav button.active { background: #fff; color: #1a3a5c; }
+
+  .content { padding: 16px; max-width: 900px; margin: 0 auto; }
+  .tab { display: none; }
+  .tab.active { display: block; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .kpi { border-radius: 12px; padding: 14px 12px; color: #fff; text-align: center; }
+  .kpi .label { font-size: 11px; opacity: 0.85; margin-bottom: 4px; }
+  .kpi .val { font-size: 20px; font-weight: 700; }
+
+  .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  .card-title { font-weight: 700; color: #1a3a5c; margin-bottom: 10px; font-size: 14px; }
+
+  .row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  input, select { border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; font-size: 13px; width: 100%; outline: none; font-family: inherit; direction: rtl; background: #fff; }
+  input:focus, select:focus { border-color: #2563a8; }
+
+  .btn { border: none; border-radius: 8px; padding: 9px 16px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; white-space: nowrap; color: #fff; }
+  .btn-blue { background: #2563a8; }
+  .btn-green { background: #16a34a; }
+  .btn-cyan { background: #0891b2; }
+  .btn-red { background: #dc2626; }
+  .btn-orange { background: #f59e0b; }
+  .btn-purple { background: #7c3aed; }
+  .btn-gray { background: #6b7280; }
+  .btn-teal { background: #0d9488; }
+  .btn-full { width: 100%; margin-top: 10px; padding: 12px; }
+  .btn-sm { padding: 3px 10px !important; font-size: 11px !important; }
+
+  .table-actions { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { background: #1a3a5c; color: #fff; padding: 9px 10px; text-align: right; font-weight: 600; font-size: 12px; }
+  .data-table td { padding: 8px 10px; border-bottom: 1px solid #f0f4f8; vertical-align: middle; }
+  .data-table tr:hover td { background: #f8fafc; }
+  .data-table .act-btn { display: flex; gap: 4px; }
+
+  .tag { background: #e8f0fe; color: #1a3a5c; padding: 5px 12px; border-radius: 20px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; margin: 3px; }
+  .tag-del { cursor: pointer; color: #dc2626; font-weight: 700; background: none; border: none; font-size: 14px; }
+
+  .empty { text-align: center; color: #9ca3af; padding: 20px; }
+
+  .archive-item { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+  .archive-header { display: flex; justify-content: space-between; align-items: center; }
+  .archive-body { margin-top: 12px; border-top: 1px solid #f0f4f8; padding-top: 12px; display: none; }
+  .archive-body.open { display: block; }
+
+  .diff-pos { color: #16a34a; font-weight: 700; }
+  .diff-neg { color: #dc2626; font-weight: 700; }
+  .section-label { font-weight: 600; color: #1a3a5c; margin-bottom: 6px; font-size: 13px; margin-top: 10px; }
+
+  .emp-search-result { background: #fff; border-radius: 12px; padding: 14px; margin-top: 10px; border: 2px solid #2563a8; }
+  .emp-search-result .emp-name { font-size: 16px; font-weight: 700; color: #1a3a5c; margin-bottom: 10px; }
+  .emp-stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .emp-stat { background: #f0f4f8; border-radius: 8px; padding: 10px; text-align: center; }
+  .emp-stat .s-label { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+  .emp-stat .s-val { font-size: 15px; font-weight: 700; }
+
+  .sync-indicator { font-size: 11px; color: rgba(255,255,255,0.7); text-align: center; margin-top: 4px; }
+
+  @media print {
+    #login-screen, #draft-panel, .no-print, .header { display: none !important; }
+    body { background: #fff; }
+  }
+  @media (max-width: 480px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .grid2 { grid-template-columns: 1fr 1fr; }
+    .kpi .val { font-size: 15px; }
+    .data-table { font-size: 11px; }
+    .data-table th, .data-table td { padding: 6px 6px; }
+    .emp-stat-grid { grid-template-columns: 1fr 1fr; }
+    #draft-panel { width: 85%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div style="font-size:40px;margin-bottom:10px">🏦</div>
+    <h2>خزنة التركيبات</h2>
+    <p>سجّل دخولك للمتابعة</p>
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="switchLoginTab('login')">دخول</button>
+      <button class="login-tab" onclick="switchLoginTab('register')">حساب جديد</button>
+    </div>
+    <div id="login-form">
+      <input type="email" id="login-email" placeholder="البريد الإلكتروني">
+      <input type="password" id="login-pass" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="btn btn-blue" style="width:100%;margin-top:4px" onclick="doLogin()">دخول</button>
+      <div style="text-align:center;margin-top:10px">
+        <button onclick="doForgotPassword()" style="background:none;border:none;color:#2563a8;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:underline">🔑 نسيت كلمة المرور؟</button>
+      </div>
+    </div>
+    <div id="register-form" style="display:none">
+      <input type="email" id="reg-email" placeholder="البريد الإلكتروني">
+      <input type="password" id="reg-pass" placeholder="كلمة المرور (6 أحرف على الأقل)">
+      <input type="password" id="reg-pass2" placeholder="تأكيد كلمة المرور">
+      <button class="btn btn-green" style="width:100%;margin-top:4px" onclick="doRegister()">إنشاء حساب</button>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-loading" id="login-loading">⏳ جاري التحميل...</div>
+  </div>
+</div>
+
+<!-- DRAFT PANEL -->
+<div id="draft-panel">
+  <div class="draft-header">
+    <h3>📝 المسودة</h3>
+    <button class="draft-close" onclick="toggleDraft()">×</button>
+  </div>
+  <div class="draft-body" id="draft-body"></div>
+  <div class="draft-add-row">
+    <input type="text" id="draft-inp" placeholder="اكتب ملاحظة..." onkeydown="if(event.key==='Enter')addDraftNote()">
+    <button class="btn btn-orange" style="padding:8px 14px;white-space:nowrap" onclick="addDraftNote()">إضافة</button>
+  </div>
+</div>
+
+<div id="main-app" style="display:none">
+<div class="header">
+  <div class="header-top">
+    <div style="width:80px"></div>
+    <h1>🏦 خزنة التركيبات</h1>
+    <div class="header-icons">
+      <button class="icon-btn" onclick="toggleDraft()" title="المسودة">
+        📝
+        <span class="draft-badge" id="draft-badge">0</span>
+      </button>
+      <button class="icon-btn" onclick="doLogout()" title="تسجيل الخروج">🚪</button>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="active" onclick="showTab('home',this)">🏠 الرئيسية</button>
+    <button onclick="showTab('withdrawals',this)">💸 حركات السحب</button>
+    <button onclick="showTab('settlements',this)">✅ تصفية العهد</button>
+    <button onclick="showTab('archive',this)">🗂️ الأرشيف</button>
+    <button onclick="showTab('settings',this)">⚙️ الإعدادات</button>
+  </div>
+  <div class="sync-indicator" id="sync-indicator">☁️ متصل بالسحاب</div>
+</div>
+
+<div class="content">
+
+  <!-- HOME TAB -->
+  <div id="tab-home" class="tab active">
+    <div class="card">
+      <div class="card-title">🔍 بحث سريع عن موظف</div>
+      <div class="row">
+        <input type="text" id="home-emp-search" placeholder="اكتب اسم الموظف..." oninput="renderEmpSearch()">
+      </div>
+      <div id="home-emp-result"></div>
+    </div>
+    <div class="grid2" id="kpi-cards"></div>
+    <div class="card">
+      <div class="card-title">💰 إيداع في الخزنة</div>
+      <div class="row">
+        <input type="number" id="inp-deposit" placeholder="مبلغ الإيداع الجديد">
+        <button class="btn btn-green" onclick="doDeposit()">تأكيد الإيداع</button>
+      </div>
+    </div>
+    <button class="btn btn-purple btn-full" onclick="archiveMonth()">🗂️ أرشفة الشهر الحالي وبدء شهر جديد</button>
+  </div>
+
+  <!-- WITHDRAWALS TAB -->
+  <div id="tab-withdrawals" class="tab">
+    <div class="card">
+      <div class="card-title" id="wd-form-title">➕ تسجيل حركة سحب عهدة جديدة</div>
+      <div class="form-grid">
+        <select id="wd-employee"><option value="">اسم الموظف</option></select>
+        <input type="text" id="wd-project" placeholder="اسم المشروع">
+        <input type="number" id="wd-amount" placeholder="المبلغ المسحوب">
+        <input type="text" id="wd-reason" placeholder="سبب السحب">
+      </div>
+      <input type="hidden" id="wd-edit-id" value="">
+      <button class="btn btn-blue btn-full" onclick="saveWithdrawal()">⚡ تسجيل السحب الفوري</button>
+      <button class="btn btn-gray btn-full" id="wd-cancel-btn" style="display:none;margin-top:8px" onclick="cancelWdEdit()">إلغاء</button>
+    </div>
+    <div class="card">
+      <div class="card-title">🔍 البحث والفلترة</div>
+      <input type="text" id="wd-search" placeholder="ابحث عن موظف..." oninput="renderWithdrawals()" style="margin-bottom:8px">
+      <div class="row">
+        <select id="wd-period" onchange="togglePeriodInput('wd')">
+          <option value="all">كل الفترات</option>
+          <option value="week">أسبوع</option>
+          <option value="month">شهر</option>
+          <option value="year">سنة</option>
+        </select>
+        <input type="week" id="wd-period-week" style="display:none" oninput="renderWithdrawals()">
+        <input type="month" id="wd-period-month" style="display:none" oninput="renderWithdrawals()">
+        <input type="number" id="wd-period-year" placeholder="السنة" style="display:none" oninput="renderWithdrawals()">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 سجل السحبات</div>
+      <div class="table-actions no-print">
+        <button class="btn btn-orange" onclick="printTable('wd-table-wrap','حركات السحب')">🖨️ طباعة</button>
+        <button class="btn btn-teal" onclick="exportExcel('withdrawals')">📊 Excel</button>
+      </div>
+      <div id="wd-table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- SETTLEMENTS TAB -->
+  <div id="tab-settlements" class="tab">
+    <div class="card">
+      <div class="card-title" id="st-form-title">🧾 نظام تصفية العهد</div>
+      <div class="form-grid">
+        <select id="st-person" onchange="autoFillPrev()"><option value="">اسم الشخص للتصفية</option></select>
+        <input type="text" id="st-project" placeholder="المشروع">
+        <div style="position:relative">
+          <input type="number" id="st-prev" placeholder="المبلغ المتبقي من العهدة" oninput="calcDiff()" style="background:#fffbeb;border-color:#f59e0b">
+          <div id="st-prev-hint" style="font-size:11px;color:#92400e;margin-top:3px;display:none"></div>
+        </div>
+        <input type="number" id="st-actual" placeholder="المصروف الفعلي بالوصولات" oninput="calcDiff()">
+        <select id="st-dest">
+          <option>الخزنة الرئيسية</option>
+          <option>الجهة الخارجية</option>
+        </select>
+        <div style="background:#f0f4f8;border-radius:8px;padding:8px;font-size:13px;display:flex;align-items:center">
+          الفرق: <b id="st-diff" style="margin-right:4px;color:#16a34a">0.00</b> ج.م
+        </div>
+      </div>
+      <input type="hidden" id="st-edit-id" value="">
+      <button class="btn btn-green btn-full" onclick="saveSettlement()">💾 حفظ</button>
+      <button class="btn btn-gray btn-full" id="st-cancel-btn" style="display:none;margin-top:8px" onclick="cancelStEdit()">إلغاء</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 جدول التصفيات</div>
+      <div class="table-actions no-print">
+        <button class="btn btn-orange" onclick="printTable('st-table-wrap','تصفية العهد')">🖨️ طباعة</button>
+        <button class="btn btn-teal" onclick="exportExcel('settlements')">📊 Excel</button>
+      </div>
+      <div id="st-table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- ARCHIVE TAB -->
+  <div id="tab-archive" class="tab">
+    <div class="card">
+      <div class="card-title">🗂️ أرشيف الأشهر السابقة</div>
+      <div id="archive-list"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="tab-settings" class="tab">
+    <div class="card">
+      <div class="card-title">⚙️ الإعدادات الأساسية</div>
+      <div class="row">
+        <input type="number" id="inp-contract" placeholder="إجمالي العهد الكلية">
+        <button class="btn btn-blue" onclick="saveContract()">حفظ</button>
+      </div>
+      <div class="row">
+        <input type="number" id="inp-treasury" placeholder="رصيد الخزنة الابتدائي">
+        <button class="btn btn-cyan" onclick="saveTreasury()">حفظ</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">👥 إدارة الموظفين</div>
+      <div class="row">
+        <input type="text" id="inp-emp" placeholder="اسم الموظف الجديد">
+        <button class="btn btn-blue" onclick="addEmployee()">إضافة</button>
+      </div>
+      <div id="emp-tags"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">👤 الحساب</div>
+      <div id="user-info" style="font-size:13px;color:#6b7280;margin-bottom:12px"></div>
+      <button class="btn btn-red btn-full" onclick="doLogout()">🚪 تسجيل الخروج</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBN5Z9fhT2VDzNsapIOy6Hgnky2odtRAtw",
+  authDomain: "my-first-1cc0e.firebaseapp.com",
+  projectId: "my-first-1cc0e",
+  storageBucket: "my-first-1cc0e.firebasestorage.app",
+  messagingSenderId: "460460919562",
+  appId: "1:460460919562:web:32a3ee5fcf338d886408f3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let D = { treasury: 0, totalContract: 0, employees: [], withdrawals: [], settlements: [], archive: [] };
+let unsubscribe = null;
+
+// ========== AUTH ==========
+window.switchLoginTab = function(tab) {
+  document.querySelectorAll(".login-tab").forEach(t => t.classList.remove("active"));
+  event.target.classList.add("active");
+  document.getElementById("login-form").style.display = tab === "login" ? "block" : "none";
+  document.getElementById("register-form").style.display = tab === "register" ? "block" : "none";
+  document.getElementById("login-error").style.display = "none";
+};
+
+window.doLogin = async function() {
+  const email = document.getElementById("login-email").value.trim();
+  const pass = document.getElementById("login-pass").value;
+  const err = document.getElementById("login-error");
+  const loading = document.getElementById("login-loading");
+  if (!email || !pass) { showErr("أدخل البريد الإلكتروني وكلمة المرور"); return; }
+  loading.style.display = "block"; err.style.display = "none";
+  // timeout بعد 10 ثواني لو مفيش رد
+  const timeout = setTimeout(() => {
+    loading.style.display = "none";
+    showErr("❌ انتهت المهلة — تأكد من الاتصال بالإنترنت أو تفعيل Firebase Authentication");
+  }, 10000);
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    clearTimeout(timeout);
+    loading.style.display = "none";
+  } catch(e) {
+    clearTimeout(timeout);
+    loading.style.display = "none";
+    const msgs = {
+      "auth/invalid-credential": "❌ بريد أو كلمة مرور غلط",
+      "auth/user-not-found": "❌ البريد ده مش موجود",
+      "auth/wrong-password": "❌ كلمة المرور غلط",
+      "auth/too-many-requests": "❌ تم تجميد الحساب مؤقتاً بسبب محاولات كتير — حاول بعدين",
+      "auth/network-request-failed": "❌ مفيش اتصال بالنت",
+      "auth/operation-not-allowed": "❌ طريقة الدخول دي مش مفعّلة في Firebase Console",
+      "auth/configuration-not-found": "❌ Firebase مش متظبط صح — تأكد من تفعيل Email/Password في Authentication",
+    };
+    showErr(msgs[e.code] || "❌ خطأ: " + e.code + " — " + e.message);
+  }
+};
+
+window.doRegister = async function() {
+  const email = document.getElementById("reg-email").value.trim();
+  const pass = document.getElementById("reg-pass").value;
+  const pass2 = document.getElementById("reg-pass2").value;
+  const err = document.getElementById("login-error");
+  const loading = document.getElementById("login-loading");
+  if (!email || !pass) { showErr("أدخل البريد وكلمة المرور"); return; }
+  if (pass !== pass2) { showErr("❌ كلمتا المرور مش متطابقتين"); return; }
+  if (pass.length < 6) { showErr("❌ كلمة المرور لازم 6 أحرف على الأقل"); return; }
+  loading.style.display = "block"; err.style.display = "none";
+  const timeout = setTimeout(() => {
+    loading.style.display = "none";
+    showErr("❌ انتهت المهلة — تأكد من الاتصال بالإنترنت أو تفعيل Firebase Authentication");
+  }, 10000);
+  try {
+    await createUserWithEmailAndPassword(auth, email, pass);
+    clearTimeout(timeout);
+    loading.style.display = "none";
+  } catch(e) {
+    clearTimeout(timeout);
+    loading.style.display = "none";
+    const msgs = {
+      "auth/email-already-in-use": "❌ البريد ده مستخدم بالفعل — جرب تسجيل الدخول",
+      "auth/invalid-email": "❌ البريد الإلكتروني مش صحيح",
+      "auth/weak-password": "❌ كلمة المرور ضعيفة جداً",
+      "auth/network-request-failed": "❌ مفيش اتصال بالنت",
+      "auth/operation-not-allowed": "❌ طريقة التسجيل دي مش مفعّلة في Firebase Console",
+      "auth/configuration-not-found": "❌ Firebase مش متظبط صح — تأكد من تفعيل Email/Password في Authentication",
+    };
+    showErr(msgs[e.code] || "❌ خطأ: " + e.code + " — " + e.message);
+  }
+};
+
+window.doForgotPassword = async function() {
+  const email = document.getElementById("login-email").value.trim();
+  if (!email) { showErr("أدخل البريد الإلكتروني الأول عشان نبعتلك رابط إعادة التعيين"); return; }
+  const loading = document.getElementById("login-loading");
+  loading.style.display = "block";
+  document.getElementById("login-error").style.display = "none";
+  try {
+    await sendPasswordResetEmail(auth, email);
+    loading.style.display = "none";
+    const err = document.getElementById("login-error");
+    err.textContent = "✅ اتبعت إيميل إعادة تعيين كلمة المرور — اتحقق من صندوق الوارد";
+    err.style.color = "#16a34a";
+    err.style.display = "block";
+  } catch(e) {
+    loading.style.display = "none";
+    const msgs = {
+      "auth/user-not-found": "❌ البريد ده مش مسجل",
+      "auth/invalid-email": "❌ البريد الإلكتروني مش صحيح",
+      "auth/network-request-failed": "❌ مفيش اتصال بالنت",
+    };
+    showErr(msgs[e.code] || "❌ خطأ: " + e.message);
+  }
+};
+
+
+window.doLogout = async function() {
+  if (!confirm("هل تريد تسجيل الخروج؟")) return;
+  if (unsubscribe) unsubscribe();
+  await signOut(auth);
+};
+
+function showErr(msg) {
+  const err = document.getElementById("login-error");
+  err.textContent = msg; err.style.display = "block";
+}
+
+onAuthStateChanged(auth, async (user) => {
+  document.getElementById("login-loading").style.display = "none";
+  if (user) {
+    currentUser = user;
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("main-app").style.display = "block";
+    document.getElementById("user-info").textContent = "📧 " + user.email;
+    startListening();
+    loadDraftNotes();
+  } else {
+    currentUser = null;
+    document.getElementById("login-screen").style.display = "flex";
+    document.getElementById("main-app").style.display = "none";
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  }
+});
+
+// ========== FIRESTORE ==========
+function userDoc() {
+  return doc(db, "users", currentUser.uid, "data", "main");
+}
+
+function startListening() {
+  if (unsubscribe) unsubscribe();
+  unsubscribe = onSnapshot(userDoc(), (snap) => {
+    if (snap.exists()) {
+      D = snap.data();
+    } else {
+      D = { treasury: 0, totalContract: 0, employees: [], withdrawals: [], settlements: [], archive: [] };
+    }
+    render();
+    document.getElementById("sync-indicator").textContent = "☁️ متصل — آخر تحديث: " + new Date().toLocaleTimeString("ar-EG");
+  }, (err) => {
+    document.getElementById("sync-indicator").textContent = "⚠️ خطأ في الاتصال";
+  });
+}
+
+async function save() {
+  if (!currentUser) return;
+  try {
+    await setDoc(userDoc(), D);
+  } catch(e) {
+    alert("خطأ في الحفظ: " + e.message);
+  }
+}
+
+// ========== DRAFT NOTES (local per device) ==========
+const DRAFT_KEY = "mzn_draft_notes";
+let draftNotes = [];
+
+function loadDraftNotes() {
+  draftNotes = JSON.parse(localStorage.getItem(DRAFT_KEY) || "[]");
+  updateDraftBadge();
+}
+function saveDraft() { localStorage.setItem(DRAFT_KEY, JSON.stringify(draftNotes)); updateDraftBadge(); }
+
+window.toggleDraft = function() {
+  document.getElementById("draft-panel").classList.toggle("open");
+  renderDraft();
+};
+function renderDraft() {
+  const body = document.getElementById("draft-body");
+  if (!draftNotes.length) { body.innerHTML = '<div class="draft-empty">📋 لا يوجد ملاحظات<br><small>اكتب ملاحظة واضغط إضافة</small></div>'; return; }
+  body.innerHTML = draftNotes.map((n,i) => `
+    <div class="draft-item">
+      <span class="dot">•</span>
+      <span class="note-text">${escHtml(n.text)}<br><small style="color:#9ca3af">${n.date}</small></span>
+      <button class="note-del" onclick="delDraftNote(${i})">×</button>
+    </div>`).join("");
+}
+window.addDraftNote = function() {
+  const inp = document.getElementById("draft-inp");
+  const txt = inp.value.trim(); if (!txt) return;
+  draftNotes.unshift({ text: txt, date: new Date().toLocaleDateString("ar-EG") });
+  inp.value = ""; saveDraft(); renderDraft();
+};
+window.delDraftNote = function(i) { draftNotes.splice(i,1); saveDraft(); renderDraft(); };
+function updateDraftBadge() {
+  const badge = document.getElementById("draft-badge");
+  if (!badge) return;
+  if (draftNotes.length > 0) { badge.style.display = "flex"; badge.textContent = draftNotes.length > 9 ? "9+" : draftNotes.length; }
+  else { badge.style.display = "none"; }
+}
+
+// ========== HELPERS ==========
+function fmt(n) { return Number(n||0).toLocaleString("ar-EG",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDate(d) { return new Date(d).toLocaleDateString("ar-EG"); }
+function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function getWeek(dateStr) { const d=new Date(dateStr),s=new Date(d.getFullYear(),0,1); return Math.ceil(((d-s)/86400000+s.getDay()+1)/7); }
+function filterPeriod(recs,period,val) {
+  if (!val||period==="all") return recs;
+  return recs.filter(r=>{ const d=new Date(r.date);
+    if(period==="year") return d.getFullYear()===Number(val);
+    if(period==="month"){const[y,m]=val.split("-");return d.getFullYear()===Number(y)&&d.getMonth()+1===Number(m);}
+    if(period==="week"){const[y,w]=val.split("-W");return d.getFullYear()===Number(y)&&getWeek(r.date)===Number(w);}
+    return true;
+  });
+}
+
+// ========== TABS ==========
+window.showTab = function(id, btn) {
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+  document.getElementById("tab-"+id).classList.add("active");
+  btn.classList.add("active");
+  render();
+};
+
+// ========== RENDER ==========
+function render() {
+  renderHome(); renderEmployeeSelects(); renderWithdrawals(); renderSettlements(); renderArchive(); renderSettings(); updateDraftBadge();
+}
+
+function renderHome() {
+  const spent = D.withdrawals.reduce((s,w)=>s+Number(w.amount||0),0);
+  const bal = Number(D.totalContract||0)+Number(D.treasury||0)-spent;
+  document.getElementById("kpi-cards").innerHTML = `
+    <div class="kpi" style="background:#16a34a"><div class="label">الرصيد المتبقي</div><div class="val">${fmt(bal)} ج.م</div></div>
+    <div class="kpi" style="background:#0891b2"><div class="label">إجمالي الخزنة</div><div class="val">${fmt(D.treasury)} ج.م</div></div>
+    <div class="kpi" style="background:#dc2626"><div class="label">إجمالي المنصرف</div><div class="val">${fmt(spent)} ج.م</div></div>
+  `;
+  renderEmpSearch();
+}
+
+function renderEmpSearch() {
+  const search = (document.getElementById("home-emp-search")||{}).value||"";
+  const res = document.getElementById("home-emp-result"); if (!res) return;
+  if (!search.trim()) { res.innerHTML=""; return; }
+  const emp = D.employees.find(e=>e.includes(search));
+  if (!emp) { res.innerHTML=`<div style="color:#9ca3af;font-size:13px;padding:8px 0">لا يوجد موظف بهذا الاسم</div>`; return; }
+  const totalTaken = D.withdrawals.filter(w=>w.employee===emp).reduce((s,w)=>s+Number(w.amount||0),0);
+  const totalSettled = D.settlements.filter(s=>s.person===emp).reduce((s,r)=>s+Number(r.actualExpense||0),0);
+  const remaining = totalTaken - totalSettled;
+  const wds = D.withdrawals.filter(w=>w.employee===emp);
+  res.innerHTML = `
+    <div class="emp-search-result">
+      <div class="emp-name">👤 ${emp}</div>
+      <div class="emp-stat-grid">
+        <div class="emp-stat"><div class="s-label">إجمالي السحبات</div><div class="s-val" style="color:#dc2626">${fmt(totalTaken)} ج.م</div></div>
+        <div class="emp-stat"><div class="s-label">تم تصفيته</div><div class="s-val" style="color:#16a34a">${fmt(totalSettled)} ج.م</div></div>
+        <div class="emp-stat"><div class="s-label">المتبقي عليه</div><div class="s-val" style="color:${remaining>0?'#f59e0b':'#16a34a'}">${fmt(remaining)} ج.م</div></div>
+      </div>
+      ${wds.length?`<div style="margin-top:12px"><div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px">سجل سحبات ${emp}:</div>
+      <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>التاريخ</th><th>المشروع</th><th>المبلغ</th><th>السبب</th></tr></thead><tbody>
+        ${wds.map(w=>`<tr><td>${fmtDate(w.date)}</td><td>${w.project||"—"}</td><td style="color:#dc2626;font-weight:700">${fmt(w.amount)} ج.م</td><td>${w.reason||"—"}</td></tr>`).join("")}
+      </tbody></table></div></div>`:""}
+    </div>`;
+}
+
+function renderSettings() {
+  document.getElementById("inp-contract").value = D.totalContract||"";
+  document.getElementById("inp-treasury").value = D.treasury||"";
+  const tags = D.employees.map((e,i)=>`<span class="tag">${e}<button class="tag-del" onclick="delEmp(${i})">×</button></span>`).join("");
+  document.getElementById("emp-tags").innerHTML = tags || '<span style="color:#9ca3af;font-size:13px">لا يوجد موظفون بعد</span>';
+}
+
+function renderEmployeeSelects() {
+  const opts = D.employees.map(e=>`<option value="${e}">${e}</option>`).join("");
+  ["wd-employee","st-person"].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    const cur=el.value;
+    el.innerHTML=(id==="wd-employee"?"<option value=''>اسم الموظف</option>":"<option value=''>اسم الشخص للتصفية</option>")+opts;
+    el.value=cur;
+  });
+}
+
+function getFilteredWithdrawals() {
+  const search=document.getElementById("wd-search").value;
+  const period=document.getElementById("wd-period").value;
+  const pval=period==="week"?document.getElementById("wd-period-week").value:period==="month"?document.getElementById("wd-period-month").value:period==="year"?document.getElementById("wd-period-year").value:"";
+  let rows=D.withdrawals.filter(w=>!search||w.employee?.includes(search));
+  return filterPeriod(rows,period,pval);
+}
+
+function renderWithdrawals() {
+  const rows=getFilteredWithdrawals();
+  if(!rows.length){document.getElementById("wd-table-wrap").innerHTML='<div class="empty">لا توجد سجلات</div>';return;}
+  document.getElementById("wd-table-wrap").innerHTML=`<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>التاريخ</th><th>الموظف</th><th>المشروع</th><th>المبلغ</th><th>السبب</th><th class="no-print">إجراء</th></tr></thead><tbody>
+    ${rows.map(w=>`<tr><td>${fmtDate(w.date)}</td><td><b>${w.employee||"—"}</b></td><td>${w.project||"—"}</td><td style="color:#dc2626;font-weight:700">${fmt(w.amount)} ج.م</td><td>${w.reason||"—"}</td><td class="no-print"><div class="act-btn"><button class="btn btn-orange btn-sm" onclick="editWd(${w.id})">تعديل</button><button class="btn btn-red btn-sm" onclick="delWd(${w.id})">حذف</button></div></td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+function renderSettlements() {
+  if(!D.settlements.length){document.getElementById("st-table-wrap").innerHTML='<div class="empty">لا توجد تصفيات</div>';return;}
+  document.getElementById("st-table-wrap").innerHTML=`<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>التاريخ</th><th>الشخص</th><th>المشروع</th><th>المأخوذ</th><th>الفعلي</th><th>الفرق</th><th>صُفِّيت إلى</th><th class="no-print">إجراء</th></tr></thead><tbody>
+    ${D.settlements.map(s=>`<tr><td>${fmtDate(s.date)}</td><td><b>${s.person||"—"}</b></td><td>${s.project||"—"}</td><td>${fmt(s.prevAmount)} ج.م</td><td>${fmt(s.actualExpense)} ج.م</td><td class="${s.diff>=0?'diff-pos':'diff-neg'}">${s.diff>=0?"+":""}${fmt(s.diff)}</td><td>${s.destination||"—"}</td><td class="no-print"><div class="act-btn"><button class="btn btn-orange btn-sm" onclick="editSt(${s.id})">تعديل</button><button class="btn btn-red btn-sm" onclick="delSt(${s.id})">حذف</button></div></td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+function renderArchive() {
+  if(!D.archive.length){document.getElementById("archive-list").innerHTML='<div class="empty">لا يوجد أرشيف بعد</div>';return;}
+  document.getElementById("archive-list").innerHTML=D.archive.map(a=>`
+    <div class="archive-item">
+      <div class="archive-header">
+        <div><b style="color:#1a3a5c">📅 ${a.label}</b><div style="font-size:12px;color:#6b7280">${(a.withdrawals||[]).length} سحب | ${(a.settlements||[]).length} تصفية</div></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-blue" style="padding:5px 12px;font-size:12px" onclick="toggleArchive(${a.id})">فتح / إغلاق</button>
+          <button class="btn btn-red" style="padding:5px 12px;font-size:12px" onclick="delArchive(${a.id})">حذف</button>
+        </div>
+      </div>
+      <div class="archive-body" id="arch-${a.id}">
+        <input type="text" placeholder="ابحث..." id="arch-search-${a.id}" oninput="renderArchiveDetail(${a.id})" style="margin-bottom:8px">
+        <div class="table-actions no-print">
+          <button class="btn btn-orange" style="font-size:12px;padding:6px 12px" onclick="printArchiveDetail(${a.id},'${a.label}')">🖨️ طباعة</button>
+          <button class="btn btn-teal" style="font-size:12px;padding:6px 12px" onclick="exportArchiveExcel(${a.id},'${a.label}')">📊 Excel</button>
+        </div>
+        <div id="arch-detail-${a.id}"></div>
+      </div>
+    </div>`).join("");
+}
+
+window.renderArchiveDetail = function(aid) {
+  const a=D.archive.find(x=>x.id===aid); if(!a) return;
+  const search=document.getElementById("arch-search-"+aid)?.value||"";
+  let wds=(a.withdrawals||[]).filter(w=>!search||w.employee?.includes(search));
+  let sts=(a.settlements||[]).filter(s=>!search||s.person?.includes(search));
+  document.getElementById("arch-detail-"+aid).innerHTML=`
+    <div class="section-label">💸 السحبات (${wds.length}):</div>
+    ${wds.length?`<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>التاريخ</th><th>الموظف</th><th>المشروع</th><th>المبلغ</th><th>السبب</th></tr></thead><tbody>${wds.map(w=>`<tr><td>${fmtDate(w.date)}</td><td><b>${w.employee}</b></td><td>${w.project||"—"}</td><td style="color:#dc2626;font-weight:700">${fmt(w.amount)} ج.م</td><td>${w.reason||"—"}</td></tr>`).join("")}</tbody></table></div>`:'<div style="color:#9ca3af;font-size:12px">لا يوجد</div>'}
+    <div class="section-label" style="margin-top:14px">✅ التصفيات (${sts.length}):</div>
+    ${sts.length?`<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>التاريخ</th><th>الشخص</th><th>المشروع</th><th>المأخوذ</th><th>الفعلي</th><th>الفرق</th><th>صُفِّيت إلى</th></tr></thead><tbody>${sts.map(s=>`<tr><td>${fmtDate(s.date)}</td><td><b>${s.person}</b></td><td>${s.project||"—"}</td><td>${fmt(s.prevAmount)}</td><td>${fmt(s.actualExpense)}</td><td class="${s.diff>=0?'diff-pos':'diff-neg'}">${s.diff>=0?"+":""}${fmt(s.diff)}</td><td>${s.destination}</td></tr>`).join("")}</tbody></table></div>`:'<div style="color:#9ca3af;font-size:12px">لا يوجد</div>'}`;
+};
+
+// ========== PRINT ==========
+function buildPrintHTML(title, content) {
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>${title}</title>
+  <style>body{font-family:Tahoma,Arial,sans-serif;direction:rtl;padding:24px;background:#fff}h2{text-align:center;color:#1a3a5c;margin-bottom:6px;font-size:20px}.sub{text-align:center;color:#6b7280;font-size:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}th{background:#1a3a5c;color:#fff;padding:9px 10px;text-align:right;font-size:12px}td{padding:8px 10px;border-bottom:1px solid #e5e7eb}tr:nth-child(even) td{background:#f8fafc}.section-label{font-weight:700;color:#1a3a5c;margin:16px 0 6px;font-size:14px}</style>
+  </head><body><h2>🏦 خزنة التركيبات</h2><div class="sub">${title} — ${new Date().toLocaleDateString("ar-EG")}</div>${content}<script>window.onload=function(){window.print();}<\/script></body></html>`;
+}
+window.printTable = function(id, title) { const w=window.open("","_blank"); w.document.write(buildPrintHTML(title, document.getElementById(id).innerHTML)); w.document.close(); };
+window.printArchiveDetail = function(aid, label) { const w=window.open("","_blank"); w.document.write(buildPrintHTML("أرشيف — "+label, document.getElementById("arch-detail-"+aid)?.innerHTML||"")); w.document.close(); };
+
+// ========== EXCEL ==========
+function toExcelHTML(title, headers, rows) {
+  const hr=headers.map(h=>`<th style="background:#1a3a5c;color:#fff;padding:8px 12px;border:1px solid #ccc">${h}</th>`).join("");
+  const dr=rows.map((r,i)=>`<tr>${r.map(c=>`<td style="padding:7px 12px;border:1px solid #ddd;background:${i%2===0?"#fff":"#f0f4f8"}">${c||""}</td>`).join("")}</tr>`).join("");
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" lang="ar"><head><meta charset="UTF-8"></head><body dir="rtl"><h2>🏦 خزنة التركيبات — ${title}</h2><p style="color:#6b7280;font-size:12px">${new Date().toLocaleDateString("ar-EG")}</p><table border="1" cellspacing="0" style="border-collapse:collapse;width:100%"><thead><tr>${hr}</tr></thead><tbody>${dr}</tbody></table></body></html>`;
+}
+function downloadExcel(html, filename) {
+  const blob=new Blob(["\uFEFF"+html],{type:"application/vnd.ms-excel;charset=utf-8;"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename+".xls"; a.click();
+}
+window.exportExcel = function(type) {
+  if(type==="withdrawals"){const rows=getFilteredWithdrawals();downloadExcel(toExcelHTML("حركات السحب",["التاريخ","الموظف","المشروع","المبلغ (ج.م)","السبب"],rows.map(w=>[fmtDate(w.date),w.employee,w.project,fmt(w.amount),w.reason])),"حركات_السحب");}
+  else{downloadExcel(toExcelHTML("تصفية العهد",["التاريخ","الشخص","المشروع","المأخوذ","الفعلي","الفرق","صُفِّيت إلى"],D.settlements.map(s=>[fmtDate(s.date),s.person,s.project,fmt(s.prevAmount),fmt(s.actualExpense),(s.diff>=0?"+":"")+fmt(s.diff),s.destination])),"تصفية_العهد");}
+};
+window.exportArchiveExcel = function(aid, label) {
+  const a=D.archive.find(x=>x.id===aid); if(!a) return;
+  const rows=[...(a.withdrawals||[]).map(w=>["سحب",fmtDate(w.date),w.employee,w.project,fmt(w.amount),w.reason,""]),
+              ...(a.settlements||[]).map(s=>["تصفية",fmtDate(s.date),s.person,s.project,fmt(s.actualExpense),(s.diff>=0?"+":"")+fmt(s.diff),s.destination])];
+  downloadExcel(toExcelHTML("أرشيف — "+label,["نوع","التاريخ","الاسم","المشروع","المبلغ","الفرق/السبب","الوجهة"],rows),"ارشيف_"+label);
+};
+
+// ========== ACTIONS ==========
+window.saveContract = async function(){D.totalContract=Number(document.getElementById("inp-contract").value)||0;await save();};
+window.saveTreasury = async function(){D.treasury=Number(document.getElementById("inp-treasury").value)||0;await save();};
+window.doDeposit = async function(){const v=Number(document.getElementById("inp-deposit").value)||0;if(!v)return;D.treasury+=v;document.getElementById("inp-deposit").value="";await save();};
+window.addEmployee = async function(){const v=document.getElementById("inp-emp").value.trim();if(!v)return;D.employees.push(v);document.getElementById("inp-emp").value="";await save();};
+window.delEmp = async function(i){D.employees.splice(i,1);await save();};
+
+window.archiveMonth = async function(){
+  if(!confirm("هل تريد أرشفة بيانات الشهر الحالي ومسحها؟")) return;
+  const label=new Date().toLocaleString("ar-EG",{month:"long",year:"numeric"});
+  D.archive.push({id:Date.now(),label,date:new Date().toISOString(),treasury:D.treasury,totalContract:D.totalContract,withdrawals:[...D.withdrawals],settlements:[...D.settlements]});
+  D.withdrawals=[];D.settlements=[];D.treasury=0;D.totalContract=0;
+  await save(); alert("تم أرشفة الشهر بنجاح ✅");
+};
+
+window.saveWithdrawal = async function(){
+  const emp=document.getElementById("wd-employee").value,amt=document.getElementById("wd-amount").value;
+  if(!emp||!amt)return alert("اسم الموظف والمبلغ مطلوبان");
+  const editId=document.getElementById("wd-edit-id").value;
+  const rec={employee:emp,project:document.getElementById("wd-project").value,amount:Number(amt),reason:document.getElementById("wd-reason").value};
+  if(editId){const id=Number(editId);D.withdrawals=D.withdrawals.map(w=>w.id===id?{...w,...rec}:w);document.getElementById("wd-edit-id").value="";document.getElementById("wd-form-title").textContent="➕ تسجيل حركة سحب عهدة جديدة";document.getElementById("wd-cancel-btn").style.display="none";}
+  else{D.withdrawals.push({...rec,id:Date.now(),date:new Date().toISOString()});}
+  ["wd-employee","wd-project","wd-amount","wd-reason"].forEach(id=>document.getElementById(id).value="");
+  await save();
+};
+window.editWd = function(id){const w=D.withdrawals.find(x=>x.id===id);if(!w)return;document.getElementById("wd-employee").value=w.employee;document.getElementById("wd-project").value=w.project;document.getElementById("wd-amount").value=w.amount;document.getElementById("wd-reason").value=w.reason;document.getElementById("wd-edit-id").value=id;document.getElementById("wd-form-title").textContent="✏️ تعديل السحب";document.getElementById("wd-cancel-btn").style.display="block";window.scrollTo(0,0);};
+window.cancelWdEdit = function(){document.getElementById("wd-edit-id").value="";["wd-employee","wd-project","wd-amount","wd-reason"].forEach(id=>document.getElementById(id).value="");document.getElementById("wd-form-title").textContent="➕ تسجيل حركة سحب عهدة جديدة";document.getElementById("wd-cancel-btn").style.display="none";};
+window.delWd = async function(id){if(!confirm("حذف هذا السحب؟"))return;D.withdrawals=D.withdrawals.filter(w=>w.id!==id);await save();};
+
+window.calcDiff = function(){const diff=Number(document.getElementById("st-prev").value||0)-Number(document.getElementById("st-actual").value||0);const el=document.getElementById("st-diff");el.textContent=(diff>=0?"+":"")+fmt(diff);el.style.color=diff>=0?"#16a34a":"#dc2626";};
+window.autoFillPrev = function(){
+  const person=document.getElementById("st-person").value,hint=document.getElementById("st-prev-hint");
+  if(!person){document.getElementById("st-prev").value="";hint.style.display="none";window.calcDiff();return;}
+  const totalTaken=D.withdrawals.filter(w=>w.employee===person).reduce((s,w)=>s+Number(w.amount||0),0);
+  const totalSettled=D.settlements.filter(s=>s.person===person).reduce((s,r)=>s+Number(r.actualExpense||0),0);
+  const remaining=totalTaken-totalSettled;
+  document.getElementById("st-prev").value=remaining>0?remaining:0;
+  hint.style.display="block";hint.innerHTML=`📊 إجمالي سحبات <b>${person}</b>: ${fmt(totalTaken)} ج.م &nbsp;|&nbsp; اتصفى: ${fmt(totalSettled)} ج.م &nbsp;|&nbsp; <span style="color:#b45309;font-weight:700">المتبقي: ${fmt(remaining)} ج.م</span>`;
+  window.calcDiff();
+};
+window.saveSettlement = async function(){
+  const person=document.getElementById("st-person").value,actual=document.getElementById("st-actual").value;
+  if(!person||!actual)return alert("اسم الشخص والمصروف الفعلي مطلوبان");
+  const prev=Number(document.getElementById("st-prev").value||0);
+  const editId=document.getElementById("st-edit-id").value;
+  const rec={person,project:document.getElementById("st-project").value,prevAmount:prev,actualExpense:Number(actual),destination:document.getElementById("st-dest").value,diff:prev-Number(actual)};
+  if(editId){const id=Number(editId);D.settlements=D.settlements.map(s=>s.id===id?{...s,...rec}:s);document.getElementById("st-edit-id").value="";document.getElementById("st-form-title").textContent="🧾 نظام تصفية العهد";document.getElementById("st-cancel-btn").style.display="none";}
+  else{D.settlements.push({...rec,id:Date.now(),date:new Date().toISOString()});}
+  ["st-person","st-project","st-prev","st-actual"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("st-diff").textContent="0.00";document.getElementById("st-prev-hint").style.display="none";
+  await save();
+};
+window.editSt = function(id){const s=D.settlements.find(x=>x.id===id);if(!s)return;document.getElementById("st-person").value=s.person;document.getElementById("st-project").value=s.project;document.getElementById("st-prev").value=s.prevAmount;document.getElementById("st-actual").value=s.actualExpense;document.getElementById("st-dest").value=s.destination;document.getElementById("st-edit-id").value=id;document.getElementById("st-form-title").textContent="✏️ تعديل التصفية";document.getElementById("st-cancel-btn").style.display="block";window.calcDiff();window.scrollTo(0,0);};
+window.cancelStEdit = function(){document.getElementById("st-edit-id").value="";["st-person","st-project","st-prev","st-actual"].forEach(id=>document.getElementById(id).value="");document.getElementById("st-prev-hint").style.display="none";document.getElementById("st-form-title").textContent="🧾 نظام تصفية العهد";document.getElementById("st-cancel-btn").style.display="none";};
+window.delSt = async function(id){if(!confirm("حذف هذا السجل؟"))return;D.settlements=D.settlements.filter(s=>s.id!==id);await save();};
+
+window.toggleArchive = function(id){const el=document.getElementById("arch-"+id);el.classList.toggle("open");if(el.classList.contains("open"))window.renderArchiveDetail(id);};
+window.delArchive = async function(id){if(!confirm("حذف هذا الأرشيف نهائياً؟"))return;D.archive=D.archive.filter(a=>a.id!==id);await save();};
+window.togglePeriodInput = function(prefix){const p=document.getElementById(prefix+"-period").value;["week","month","year"].forEach(t=>{const el=document.getElementById(prefix+"-period-"+t);if(el)el.style.display=p===t?"block":"none";});renderWithdrawals();};
+
+</script>
+</body>
+</html>
